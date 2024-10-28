@@ -186,15 +186,3 @@ plot(forecast_house_prices, xlab = "Year", ylab = "Average Monthly House Price (
 #Print the average house sale prices for Jan 2020 to Jun 2020 
 print(forecast_house_prices)
 ```
-
-```{r}
-#By RS
-x <- diff(em_house_prices$average_price_gbp,differences = 1)
-acf(x)
-pacf(x)
-
-y<- diff(em_house_prices$average_price_gbp,differences = 2)
-acf(y)
-pacf(y)
-```
-]
