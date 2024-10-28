@@ -1,0 +1,200 @@
+---
+title: "CW_Q2"
+output: html_document
+date: "2024-03-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r - Part 1}
+#Installing necessary package
+#install.packages("forecast")
+
+#Loading the installed/necessary packages
+library(forecast)
+
+#Check for presence of null values in the dataset
+if (!any(is.na(cet_temp))) {
+  print("No null values.")
+} else {
+ print("Null values are observed!") 
+}
+```
+
+```{r}
+#Read the dataset "em_house_prices.csv" and store it in the variable 'em_house_prices'
+em_house_prices <- read.csv("em_house_prices.csv", header = TRUE)
+
+#Declare the dataset to be a time series data starting from the year 2010 and a frequency of 12 for monthly data
+em_house_prices_ts <- ts(em_house_prices$average_price_gbp, start = 2010, frequency = 12)
+
+#Time plot of the average house sale prices
+ts.plot(em_house_prices_ts, xlab = "Year", ylab = "Average House Price (£GBP)", main = 
+  "Time Plot of Average House Prices (£GBP) in East Midlands (2010-2019)")
+
+#Plot Sample ACF for the (original) time series data
+acf(em_house_prices_ts, main = "Sample ACF vs Lag, Average House Sale Prices (£GBP)", lag.max = 25)
+
+#Plot Sample PACF for the (original) time series data
+pacf(em_house_prices_ts, main = "Sample PACF vs Lag, Average House Sale Prices (£GBP)", lag.max = 25)
+
+#Perform Augmented Dickey-Fuller (ADF) test to check whether the time series is stationary or not
+adf.test(em_house_prices_ts)
+
+#Perform Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test to check whether the time series is stationary or not
+kpss_test <- kpss.test(em_house_prices_ts)
+
+#Print the result of KPSS Test
+print(kpss_test)
+```
+
+```{r}
+#Decompose the (original) time series data for further analysis
+decompose_ts_data <- decompose(em_house_prices_ts)
+
+#Plot the decomposed time series data
+plot(decompose_ts_data)
+```
+
+```{r}
+#Perform differencing in the (original) time series data
+diff_ts_data <- diff(em_house_prices_ts)
+
+#Plot the differenced time series data
+plot(diff_ts_data, xlab = "Year", ylab = "First Difference of Average House Price (£GBP)", main = 
+  "First Order Differenced Plot of the Time Series Data")
+
+#Plot Sample ACF for the differenced time series data
+acf(diff_ts_data, main = "Sample ACF vs Lag of First Order Differenced Time Series Data", lag.max = 25)
+
+#Plot Sample PACF for the differenced time series data
+pacf(diff_ts_data, main = "Sample PACF vs Lag of First Order Differenced Time Series Data", lag.max = 25)
+```
+
+```{r}
+#Perform (non-seasonal) differencing in the previously differenced time series data
+diff_non_sea_data <- diff(diff_ts_data) #d = 2
+
+#Plot the second order differenced time series data
+plot(diff_non_sea_data, xlab = "Year", ylab = "Second Difference of Average House Price (£GBP)", main = 
+  "Second Order Differenced Plot of the Time Series Data")
+
+#Plot Sample ACF for the differenced time series data
+acf(diff_non_sea_data, main = "Sample ACF vs Lag of Second Order Differenced Time Series Data", lag.max = 25) #q = 1
+
+#Plot Sample PACF for the differenced time series data
+pacf(diff_non_sea_data, main = "Sample PACF Lag of Second Order Differenced Time Series Data", lag.max = 25) #p = 2
+```
+
+```{r}
+#Perform seasonal differencing in the previously differenced time series data with lag 12 for monthly data
+diff_sea_data <- diff(diff_non_sea_data, lag = 12) #D = 1
+
+#Time plot of the seasonally differenced time series data
+ts.plot(diff_sea_data, xlab = "Year", ylab = "Seasonally Differenced Average House Price (£GBP)", main = 
+  "Seasonally Differenced Plot of the Time Series Data")
+
+#Plot Sample ACF for the seasonally differenced time series data
+acf(diff_sea_data, main = "Sample ACF of Seasonally Differenced Time Series Data", lag.max = 250) #Q = 1
+
+#Plot Sample PACF for the seasonally differenced time series data
+pacf(diff_sea_data, main = "Sample PACF of Seasonally Differenced Time Series Data", lag.max = 250) #P = 0, 1
+```
+
+```{r}
+#Perform Augmented Dickey-Fuller (ADF) test to check whether the seasonally differenced time series is stationary or not
+adf.test(diff_sea_data)
+
+#Perform Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test to check whether the the seasonally differenced time series is stationary or not 
+kpss_test_2 <- kpss.test(diff_sea_data)
+
+#Print the result of KPSS Test
+print(kpss_test_2)
+```
+
+```{r}
+#Assessing SARIMA (Seasonal Arima) model1 with parameters p = 2, d = 2, q = 1, P = 0, D = 1, Q = 1
+sarima_model1 <- arima(em_house_prices_ts, order = c(2, 2, 1), seasonal = list(order = c(0, 1, 1), period = 12), method = 'CSS-ML')
+
+#Retrieve summary of SARIMA model1
+summary(sarima_model1)
+
+#Extract sarima_model1 residuals
+resid_sar1<-residuals(sarima_model1)
+
+#Time plot of the residuals of sarima_model1
+ts.plot(resid_sar1, xlab = "Year", ylab = "SARIMA_1 Residuals", main = 
+  "Time Plot of SARIMA(2, 2, 1)(0, 1, 1) Model Residuals")
+
+#Plot Sample ACF of the residuals of sarima_model1
+acf(resid_sar1, main = "Sample ACF vs. Lag: SARIMA(2, 2, 1)(0, 1, 1) Model Residuals") 
+
+```
+
+
+```{r - Part 2}
+#Assessing SARIMA (Seasonal Arima) model2 with parameters p = 2, d = 2, q = 1, P = 1, D = 1, Q = 1
+sarima_model2 <- arima(em_avg_house_prices, order = c(2, 2, 1), seasonal = list(order = c(1, 1, 1), period = 12), method = 'CSS-ML')
+
+#Retrieve summary of SARIMA model2
+summary(sarima_model2)
+
+#Function to produce P-values for the Ljung-Box test for different lags where an ARIMA(p,d,q)x(P,D,Q)_h model has been fitted
+LB_test_SARIMA<-function(resid,max.k,p,q,P,Q){
+ lb_result<-list() #Initialize an empty list to store the Ljung_Box test results
+ df<-list() #Intialize an empty list to store degrees of freedom
+ p_value<-list() #Intialize an empty list to store p-values
+  for(i in (p+q+P+Q+1):max.k){ #Loop through lags
+   lb_result[[i]]<-Box.test(resid,lag=i,type=c("Ljung-Box"),fitdf=(p+q+P+Q)) #Perform LB test for each lag and store the result in the list
+   df[[i]]<-lb_result[[i]]$parameter #Extract degrees of freedom from the result
+   p_value[[i]]<-lb_result[[i]]$p.value  #Extract p-value from the result
+  }
+ df<-as.vector(unlist(df)) #Convert the list of degrees of freedom to a vector
+ p_value<-as.vector(unlist(p_value)) #Convert the list of p-values to a vector
+ test_output<-data.frame(df,p_value) #Create a dataframe for degrees of freedom and p-values
+ names(test_output)<-c("deg_freedom","LB_p_value") #Set column for the output
+ return(test_output) #Return the output
+}
+
+#Perform Ljung-Box test on the residuals on sarima_model1
+sarima_model1_lb <- LB_test_SARIMA(resid = residuals(sarima_model1), max.k = 24, p = 2, q = 1, P = 0, Q = 1)
+
+#Print p-values of the sarima_model1_lb
+print(sarima_model1_lb)
+```
+
+
+```{r}
+#Plot the P-values for the Ljung-Box test on sarima_model1, red dotted line to indicate the significance level threshold
+plot(sarima_model1_lb$deg_freedom, sarima_model1_lb$LB_p_value, xlab="Degrees of freedom", ylab="P-value",
+main="Ljung-Box Test P-values for SARIMA(2, 2, 1)(0, 1, 1)12 Model Residuals", ylim=c(0,1))
+abline(h=0.05, col="red", lty=3)
+```
+
+
+```{r}
+#Forecast average house prices for next six months (Jan 2020 - Jun 2020) by fiting the best model
+forecast_house_prices <- forecast(sarima_model1, h = 6)
+
+#Plot the average house price dataset with the forecast/predicted values
+plot(forecast_house_prices, xlab = "Year", ylab = "Average Monthly House Price (£GBP)", main = 
+  "Average House Sale Prices with Jan 2020-Jun 2020 Forecast")
+
+#Print the average house sale prices for Jan 2020 to Jun 2020 
+print(forecast_house_prices)
+```
+
+```{r}
+#By RS
+x <- diff(em_house_prices$average_price_gbp,differences = 1)
+acf(x)
+pacf(x)
+
+y<- diff(em_house_prices$average_price_gbp,differences = 2)
+acf(y)
+pacf(y)
+```
+]

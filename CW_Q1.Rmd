@@ -1,0 +1,130 @@
+---
+title: "CW_Q1"
+output: html_document
+date: "2024-03-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+#Installing necessary package
+#install.packages("forecast")
+
+#Loading the installed/necessary packages
+library(forecast)
+library(tseries)
+
+#Read in the dataset "cet_temp.csv" and store it in the variable 'cet_temp'
+cet_temp <- read.csv("cet_temp.csv",header = TRUE)
+
+#Check for presence of null values in the dataset
+if (!any(is.na(cet_temp))) {
+  print("No null values.")
+} else {
+ print("Null values are observed!") 
+}
+```
+
+```{r}
+#Declare the dataset to be a time series data starting from the year 1900 and a frequency of 1 for annual data
+annual_mean_temp <- ts(cet_temp$avg_annual_temp_C, start = 1900, frequency = 1)
+
+#Time plot of the annual mean temperature
+ts.plot(annual_mean_temp, xlab = "Year", ylab = "Average Annual Temperature (Celsius)", main = "Time Plot of Average Annual Temperature (1900-2021)")
+
+#Plot Sample ACF for the (original) time series data
+acf(annual_mean_temp, main = "Sample ACF vs Lag, Average Annual Temperature (Celsius)")
+
+#Plot Sample PACF for the (original) time series data
+pacf(annual_mean_temp, main = "Sample PACF vs Lag, Average Annual Temperature (Celsius)")
+
+#Perform Augmented Dickey-Fuller (ADF) test to check whether the time series is stationary or not
+adf.test(annual_mean_temp)
+
+#Perform Kwiatkowski-Phillips-Schmidt-Shin (KPSS) test to check whether the time series is stationary or not
+kpss_test <- kpss.test(annual_mean_temp)
+
+#Print the result of KPSS Test
+print(kpss_test)
+
+#Perform differencing in the (original) time series data
+annual_temp_diff <- diff(annual_mean_temp)
+
+#Plot the differenced time series data
+ts.plot(annual_temp_diff, xlab = "Year", ylab = "Average Annual Temperature (Celsius)", main = 
+          "First Order Differenced Plot of the Time Series Data")
+
+#Plot Sample ACF for the differenced time series data
+acf(annual_temp_diff, main = "Sample ACF vs Lag of First Order Differenced Time Series Data")
+
+#Plot Sample PACF for the differenced time series data
+pacf(annual_temp_diff, main = "Sample PACF vs Lag of First Order Differenced Time Series Data")
+
+#Assessing ARIMA  model1 with parameters p = 0, d = 1, q = 1
+arima_model1<-arima(annual_mean_temp, order = c(0,1,1), include.mean = TRUE, method="ML")
+
+#Retrieve summary of ARIMA model1
+summary(arima_model1)
+```
+
+```{r}
+#Assessing ARIMA model2 with parameters p = 1, d = 1, q = 0
+arima_model2<-arima(annual_mean_temp,order = c(1,1,0), include.mean = TRUE, method="ML")
+
+#Retrieve summary of ARIMA model2
+summary(arima_model2)
+```
+
+```{r}
+#Assessing ARIMA model3 with parameters p = 1, d = 1, q = 1
+arima_model3<-arima(annual_mean_temp, order = c(1,1,1), include.mean = TRUE, method="ML")
+
+#Retrieve summary of ARIMA model3
+summary(arima_model3)
+```
+```{r}
+#Extract arima_model1 residuals
+resid_ar1<-residuals(arima_model1)
+
+#Time plot of the residuals of arima_model1
+ts.plot(resid_ar1, xlab = "Year", ylab = "ARIMA(0,1,1) Residuals", main = 
+  "Time Plot of ARIMA(0, 1, 1) Model Residuals")
+
+#Plot Sample ACF of the the residuals of arima_model1
+acf(resid_ar1, main = "Sample ACF vs. Lag: ARIMA(0, 1, 1) Model Residuals") 
+```
+
+```{r}
+#Function to produce P-values for the Ljung-Box test for different lags where an ARIMA(p,d,q) model has been fitted
+LB_test<-function(resid,max.k,p,q){
+ lb_result<-list() #Initialize an empty list to store the Ljung_Box test results
+ df<-list() #Intialize an empty list to store degrees of freedom
+ p_value<-list() #Intialize an empty list to store p-values
+  for(i in (p+q+1):max.k){  #Loop through lags
+   lb_result[[i]] <- Box.test(resid, lag = i, type = c("Ljung-Box"), fitdf = (p + q)) #Perform LB test for each lag and store the result in the list
+   df[[i]]<-lb_result[[i]]$parameter #Extract degrees of freedom from the result
+   p_value[[i]]<-lb_result[[i]]$p.value #Extract p-value from the result
+  }
+ df<-as.vector(unlist(df))
+ p_value<-as.vector(unlist(p_value)) #Convert the list of degrees of freedom to a vector
+ test_output<-data.frame(df,p_value) #Create a dataframe for degrees of freedom and p-values
+ names(test_output)<-c("deg_freedom","LB_p_value") #Set column for the output
+ return(test_output) #Return the output
+}
+
+#Perform Ljung-Box test on the residuals on arima_model1
+arima_model1_lb <- LB_test(resid_ar1, max.k=11, p = 0, q = 1)
+
+#Print p-values of the arima_model1_lb
+print(arima_model1_lb)
+
+#To produce a plot of the P-values against the degrees of freedom and
+#Add a blue dashed line at 0.05
+plot(arima_model1_lb$deg_freedom,arima_model1_lb$LB_p_value, xlab = "Degrees of freedom", ylab = "P-value",
+     main = "Ljung-Box Test P-values for ARIMA(0,1,1)", ylim=c(0,1))
+abline(h = 0.05, col = "blue", lty = 2)
+```
